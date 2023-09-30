@@ -1,13 +1,16 @@
 ﻿<TextBox
-    x:Class="WpfAutoCompletePathTextBox.SelectFolderTextBox"
+    x:Class="WpfAutoCompletePathTextBox.PopupFolderTextBox"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Height="22"
-    MinWidth="200"
     Style="{DynamicResource AutoCompleteTextBoxStyle}">
 
     <TextBox.Resources>
         <Style x:Key="AutoCompleteTextBoxStyle" TargetType="{x:Type TextBox}">
+            <Setter Property="Focusable" Value="True" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Validation.ErrorTemplate">
                 <Setter.Value>
                     <ControlTemplate>
@@ -29,7 +32,7 @@
                                 <ScrollViewer x:Name="PART_ContentHost" Margin="0" />
                                 <Popup
                                     x:Name="PART_Popup"
-                                    AllowsTransparency="true"
+                                    AllowsTransparency="True"
                                     HorizontalOffset="{Binding Path=Left, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}"
                                     IsOpen="False"
                                     Placement="Custom"
@@ -85,7 +88,7 @@
                             </Trigger>
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
-                                    <Condition Property="Validation.HasError" Value="true" />
+                                    <Condition Property="Validation.HasError" Value="True" />
                                     <Condition SourceName="PART_Popup" Property="IsOpen" Value="False" />
                                 </MultiTrigger.Conditions>
                                 <!--<Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self}, Path=(Validation.Errors)[0].ErrorContent}" />-->

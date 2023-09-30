@@ -6,16 +6,16 @@ using System.Windows.Controls.Primitives;
 
 namespace WpfAutoCompletePathTextBox;
 
-public partial class SelectFolderTextBox : TextBox
+public partial class PopupFolderTextBox : TextBox
 {
     private Popup? _popup;
     private ListBox? _itemListBox;
     private Grid? _rootGrid;
 
     private bool _templateLoaded;
-    private string? _lastDirectoryPath;
+    private string? _lastFolderPath;
 
-    public SelectFolderTextBox()
+    public PopupFolderTextBox()
     {
         InitializeComponent();
     }
@@ -103,7 +103,7 @@ public partial class SelectFolderTextBox : TextBox
         string? text = e.Key switch
         {
             Key.Enter => tbi.Content as string,
-            Key.Escape => _lastDirectoryPath is null ? null : _lastDirectoryPath.TrimEnd('\\') + '\\',
+            Key.Escape => _lastFolderPath is null ? null : _lastFolderPath.TrimEnd('\\') + '\\',
             _ => null
         };
 
@@ -179,7 +179,7 @@ public partial class SelectFolderTextBox : TextBox
             items.Clear();
 
             var text = Text;
-            _lastDirectoryPath = Path.GetDirectoryName(text);
+            _lastFolderPath = Path.GetDirectoryName(text);
 
             foreach (string path in lookup(text))
             {
