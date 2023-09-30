@@ -10,9 +10,7 @@ This is a WPF app that auto-completes local folder paths.
 
 ### Demo
 
-![demo](https://github.com/hsytkm/WpfAutoCompletePathTextBox/blob/trunk/demo.png)
-
-
+![demo](https://github.com/hsytkm/WpfAutoCompletePathTextBox/blob/main/demo.png)
 
 ### References
 
