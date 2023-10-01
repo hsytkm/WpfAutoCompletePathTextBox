@@ -16,6 +16,9 @@ namespace WpfAutoCompletePathTextBox;
 [TemplatePart(Name = PartHistoryList, Type = typeof(ListBox))]
 public class AutoCompleteFolderTextBox : TextBox
 {
+    // Max count combobox items
+    private const int MaxHistoryCount = 5;
+
     public const string PartCandidatePopup = "PART_CandidatePopup";
     public const string PartCandidateList = "PART_CandidateList";
     public const string PartRootGrid = "rootGrid";
@@ -44,8 +47,31 @@ public class AutoCompleteFolderTextBox : TextBox
         set => SetValue(WatermarkProperty, value);
     }
 
-    public static readonly DependencyProperty IsOpenHistoryPopupProperty =
-        DependencyProperty.Register(nameof(IsOpenHistoryPopup), typeof(bool), typeof(AutoCompleteFolderTextBox),
+    // 読み取り専用の依存関係プロパティ
+    private static readonly DependencyPropertyKey IsOpenCandidatePopupPropertyKey =
+        DependencyProperty.RegisterReadOnly(nameof(IsOpenCandidatePopup), typeof(bool), typeof(AutoCompleteFolderTextBox),
+            new FrameworkPropertyMetadata(false, (d, e) =>
+            {
+                if (d is AutoCompleteFolderTextBox self && e.NewValue is bool value)
+                {
+                    if (self._candidatePopup is { } popup)
+                        popup.IsOpen = value;
+
+                    // Close other popup
+                    if (value)
+                        self.IsOpenHistoryPopup = false;
+                }
+            }));
+    public static readonly DependencyProperty IsOpenCandidatePopupProperty = IsOpenCandidatePopupPropertyKey.DependencyProperty;
+    public bool IsOpenCandidatePopup
+    {
+        get => (bool)GetValue(IsOpenCandidatePopupProperty);
+        private set => SetValue(IsOpenCandidatePopupPropertyKey, value);
+    }
+
+    // 読み取り専用の依存関係プロパティ
+    private static readonly DependencyPropertyKey IsOpenHistoryPopupPropertyKey =
+        DependencyProperty.RegisterReadOnly(nameof(IsOpenHistoryPopup), typeof(bool), typeof(AutoCompleteFolderTextBox),
             new FrameworkPropertyMetadata(false, (d, e) =>
             {
                 if (d is AutoCompleteFolderTextBox self && e.NewValue is bool value)
@@ -57,14 +83,15 @@ public class AutoCompleteFolderTextBox : TextBox
                         popup.IsOpen = value;
 
                     // Close other popup
-                    if (value && self._candidatePopup is { } otherPopup)
-                        otherPopup.IsOpen = false;
+                    if (value)
+                        self.IsOpenCandidatePopup = false;
                 }
             }));
+    public static readonly DependencyProperty IsOpenHistoryPopupProperty = IsOpenHistoryPopupPropertyKey.DependencyProperty;
     public bool IsOpenHistoryPopup
     {
         get => (bool)GetValue(IsOpenHistoryPopupProperty);
-        set => SetValue(IsOpenHistoryPopupProperty, value);
+        private set => SetValue(IsOpenHistoryPopupPropertyKey, value);
     }
 
     static AutoCompleteFolderTextBox()
@@ -76,12 +103,13 @@ public class AutoCompleteFolderTextBox : TextBox
     {
         base.OnApplyTemplate();
 
+        // 共通
+        KeyDown += AutoCompleteTextBox_KeyDown;
+
         if (GetParentWindow(this) is not { } parentWindow)
             throw new NullReferenceException();
 
-        bool prevIsOpen = false;
-
-        // テキスト入力でPath候補をポップアップ表示
+        // Path候補のポップアップ表示
         {
             var popup = _candidatePopup = Template.FindName(PartCandidatePopup, this) as Popup;
             var listBox = _candidateListBox = Template.FindName(PartCandidateList, this) as ListBox;
@@ -90,19 +118,18 @@ public class AutoCompleteFolderTextBox : TextBox
             if (popup is null || listBox is null)
                 throw new NullReferenceException();
 
-            KeyDown += AutoCompleteTextBox_KeyDown;
-            PreviewKeyDown += AutoCompleteTextBox_PreviewKeyDown;
-
-            listBox.PreviewMouseDown += ListBox_PreviewMouseDown;
+            PreviewKeyDown += CandidateParentTextBox_KeyDown;
             listBox.KeyDown += CandidateListBox_KeyDown;
+            listBox.PreviewMouseDown += ListBox_PreviewMouseDown;
             popup.CustomPopupPlacementCallback += Popup_Repositioning;
 
             // PopupはWindowのフォーカス状態と連動させます（Popup表示だけが残る対応）
-            parentWindow.Deactivated += (_, _) => (prevIsOpen, popup.IsOpen) = (popup.IsOpen, false);
-            parentWindow.Activated += (_, _) => popup.IsOpen = prevIsOpen;
+            bool prevIsOpen = false;
+            parentWindow.Deactivated += (_, _) => (prevIsOpen, IsOpenCandidatePopup) = (popup.IsOpen, false);
+            parentWindow.Activated += (_, _) => IsOpenCandidatePopup = prevIsOpen;
         }
 
-        // ExpanderでPath履歴をポップアップ表示
+        // Path履歴のポップアップ表示
         {
             var expander = _historyExpander = Template.FindName(PartHistoryExpander, this) as Expander;
             var popup = _historyPopup = Template.FindName(PartHistoryPopup, this) as Popup;
@@ -111,8 +138,9 @@ public class AutoCompleteFolderTextBox : TextBox
             if (expander is null || popup is null || listBox is null)
                 throw new NullReferenceException();
 
-            listBox.PreviewMouseDown += ListBox_PreviewMouseDown;
+            PreviewKeyDown += HistoryParentTextBox_KeyDown;
             listBox.KeyDown += HistoryListBox_KeyDown;
+            listBox.PreviewMouseDown += ListBox_PreviewMouseDown;
             popup.CustomPopupPlacementCallback += Popup_Repositioning;
 
             expander.IsEnabled = false;
@@ -121,18 +149,111 @@ public class AutoCompleteFolderTextBox : TextBox
             _histories.CollectionChanged += Histories_CollectionChanged;
 
             // PopupはWindowのフォーカス状態と連動させます（Popup表示だけが残る対応）
-            parentWindow.Deactivated += (_, _) => (prevIsOpen, popup.IsOpen) = (popup.IsOpen, false);
-            parentWindow.Activated += (_, _) => popup.IsOpen = prevIsOpen;
+            bool prevIsOpen = false;
+            parentWindow.Deactivated += (_, _) => (prevIsOpen, IsOpenHistoryPopup) = (popup.IsOpen, false);
+            parentWindow.Activated += (_, _) => IsOpenHistoryPopup = prevIsOpen;
 
-            // for debug
+#if DEBUG
             _histories.Insert(0, @"D:\tools\Viewer");
             _histories.Insert(0, @"D:\data\_temp");
             _histories.Insert(0, @"D:\_temp");
             _histories.Insert(0, @"D:\tools\Dev");
+#endif
         }
 
         _templateLoaded = true;
     }
+
+    #region Self
+
+    private void AutoCompleteTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not Key.Enter)
+            return;
+
+        IsOpenCandidatePopup = false;
+        var current = Text;
+        var newText = IsDriveLetterOnly(current) ? current : current.TrimEnd('\\');
+        SetTextAndMoveLastChar(this, newText);
+        NotifyTextProperty();
+    }
+
+    protected override void OnTextChanged(TextChangedEventArgs e)
+    {
+        if (!_templateLoaded)
+            return;
+
+        if (_candidateListBox?.Items is not { } listItems)
+            throw new NullReferenceException();
+
+        try
+        {
+            var text = Text;
+            _lastCandidateFolderPath = Path.GetDirectoryName(text);
+
+            listItems.Clear();
+            foreach (string path in lookup(text))
+            {
+                if (text != path)
+                    listItems.Add(path);
+            }
+        }
+        finally
+        {
+            IsOpenCandidatePopup = listItems.Count > 0;
+        }
+
+        static IEnumerable<string> lookup(string path)
+        {
+            try
+            {
+                var dirName = Path.GetDirectoryName(path);
+                if (dirName is null && IsDriveLetterOnly(path))
+                {
+                    dirName = path;
+                }
+
+                if (Directory.Exists(dirName))
+                    return new DirectoryInfo(dirName)
+                        .EnumerateDirectories()
+                        .Where(x => x.FullName.StartsWith(path, StringComparison.InvariantCultureIgnoreCase))
+                        .Select(x => x.FullName);
+            }
+            catch (Exception) { }
+
+            return Enumerable.Empty<string>();
+        }
+    }
+
+    private void NotifyTextProperty()
+    {
+        var pathText = Text;
+        GetBindingExpression(TextBox.TextProperty).UpdateSource();
+
+        if (DirectoryExistsRule.IsValidPath(pathText))
+        {
+            var items = _histories;
+
+            // delete duplicate item
+            if (items.Contains(pathText))
+                items.Remove(pathText);
+
+            while (items.Count >= MaxHistoryCount)
+                items.RemoveAt(items.Count - 1);
+
+            items.Insert(0, pathText);  // add to head
+        }
+    }
+
+    private static void SetTextAndMoveLastChar(TextBox textBox, string text)
+    {
+        textBox.Text = text;
+        textBox.Select(text.Length, 0);   // select last char
+    }
+
+    private static bool IsDriveLetterOnly(string path) => path.Length == 3 && path[^2..] == ":\\";
+
+    #endregion
 
     #region Common
 
@@ -149,130 +270,10 @@ public class AutoCompleteFolderTextBox : TextBox
         if (_rootGrid is not { } rootGrid)
             throw new NullReferenceException();
 
-        return new CustomPopupPlacement[]
-        {
-            new(new Point(0.01 - offset.X, rootGrid.ActualHeight - offset.Y), PopupPrimaryAxis.None)
-        };
+        double x = 0.01 - offset.X;
+        double y = rootGrid.ActualHeight - offset.Y;
+        return new CustomPopupPlacement[] { new(new Point(x, y), PopupPrimaryAxis.None) };
     }
-
-    private void AutoCompleteTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
-    {
-        if (_candidateListBox is not { } listBox)
-            throw new NullReferenceException();
-
-        if (listBox.Items.Count > 0 && e.OriginalSource is not ListBoxItem)
-        {
-            switch (e.Key)
-            {
-                case Key.Up:
-                case Key.Down:
-                case Key.Prior:
-                case Key.Next:
-                    listBox.Focus();
-
-                    if (listBox.ItemContainerGenerator.ContainerFromIndex(0) is ListBoxItem lbi)
-                        lbi.Focus();
-
-                    e.Handled = true;
-                    break;
-            }
-        }
-    }
-
-    private void AutoCompleteTextBox_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (_candidatePopup is not { } popup)
-            throw new NullReferenceException();
-
-        if (e.Key is Key.Enter)
-        {
-            popup.IsOpen = false;
-
-            var current = Text;
-            var newText = IsDriveLetterOnly(current) ? current : current.TrimEnd('\\');
-            SetTextAndMoveLastChar(this, newText);
-            NotifyTextProperty();
-        }
-    }
-
-    protected override void OnTextChanged(TextChangedEventArgs e)
-    {
-        if (!_templateLoaded)
-            return;
-
-        if (_candidatePopup is not { } popup)
-            throw new NullReferenceException();
-
-        if (_candidateListBox?.Items is not { } listItems)
-            throw new NullReferenceException();
-
-        try
-        {
-            listItems.Clear();
-
-            var text = Text;
-            _lastCandidateFolderPath = Path.GetDirectoryName(text);
-
-            foreach (string path in lookup(text))
-            {
-                if (text != path)
-                    listItems.Add(path);
-            }
-        }
-        finally
-        {
-            popup.IsOpen = listItems.Count > 0;
-        }
-
-        static IEnumerable<string> lookup(string path)
-        {
-            try
-            {
-                var dirName = Path.GetDirectoryName(path);
-                if (dirName is null)
-                {
-                    if (IsDriveLetterOnly(path))
-                        dirName = path;
-                }
-
-                if (Directory.Exists(dirName))
-                {
-                    return new DirectoryInfo(dirName)
-                        .EnumerateDirectories()
-                        .Where(x => x.FullName.StartsWith(path, StringComparison.InvariantCultureIgnoreCase))
-                        .Select(x => x.FullName);
-                }
-            }
-            catch (Exception) { }
-
-            return Enumerable.Empty<string>();
-        }
-    }
-
-    private void NotifyTextProperty()
-    {
-        var pathText = Text;
-
-        //Debug.WriteLine(@$"View:Nofity->""{pathText}""");
-        GetBindingExpression(TextBox.TextProperty).UpdateSource();
-
-        if (DirectoryExistsRule.IsValidPath(pathText))
-        {
-            if (_histories.Contains(pathText))
-                _histories.Remove(pathText);
-
-            // 新規要素を先頭に追加します
-            _histories.Insert(0, pathText);
-        }
-    }
-
-    private static void SetTextAndMoveLastChar(TextBox textBox, string text)
-    {
-        textBox.Text = text;
-        textBox.Select(text.Length, 0);   // Select last char
-    }
-
-    private static bool IsDriveLetterOnly(string path) => path.Length == 3 && path[^2..] == ":\\";
 
     private void ListBox_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
@@ -285,9 +286,7 @@ public class AutoCompleteFolderTextBox : TextBox
         Text = textBlock.Text;
         NotifyTextProperty();
 
-        if (_candidatePopup is { } popup)
-            popup.IsOpen = false;
-
+        IsOpenCandidatePopup = false;
         IsOpenHistoryPopup = false;
 
         e.Handled = true;
@@ -296,18 +295,16 @@ public class AutoCompleteFolderTextBox : TextBox
     #endregion
 
     #region Candidate
+
     private void CandidateListBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.OriginalSource is not ListBoxItem listItem)
             return;
 
-        if (_candidatePopup is not { } popup)
-            throw new NullReferenceException();
-
         string? text = e.Key switch
         {
             Key.Enter => listItem.Content as string,
-            Key.Oem5 => listItem.Content is string ? (listItem.Content as string) + '\\' : null,      // BackslashKey
+            Key.Oem5 => listItem.Content is string ? (listItem.Content as string) + '\\' : null,    // BackslashKey
             Key.Escape => _lastCandidateFolderPath is not null ? _lastCandidateFolderPath.TrimEnd('\\') + '\\' : null,
             _ => null
         };
@@ -315,22 +312,45 @@ public class AutoCompleteFolderTextBox : TextBox
         if (text is null)
             return;
 
-        // 以下だとポップアップのEnterキー選択でPathを確定しません
-        //if (e.Key is Key.Enter)
-        //    UpdateSource();
-
         SetTextAndMoveLastChar(this, text);
 
-        // 以下だとポップアップのEnterキー選択でPathを確定します
+        // ポップアップ中のEnterキー選択でPathを確定します
         if (e.Key is Key.Enter)
             NotifyTextProperty();
 
         // 基本的には 選択が完了しているのでPopupをクローズしますが、
         // Backslashキー かつ 子ディレクトリが存在する場合は継続したPath選択のためクローズしません。
-        popup.IsOpen = e.Key is Key.Oem5 && new DirectoryInfo(Text).EnumerateDirectories().Any();
-
+        IsOpenCandidatePopup = e.Key is Key.Oem5 && new DirectoryInfo(Text).EnumerateDirectories().Any();
         Keyboard.Focus(this);
+
         e.Handled = true;
+    }
+
+    private void CandidateParentTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (!IsOpenCandidatePopup)
+            return;
+
+        if (_candidateListBox is not { } listBox)
+            throw new NullReferenceException();
+
+        switch (e.Key)
+        {
+            case Key.Up:
+            case Key.Down:
+            case Key.Prior: // PageUp
+            case Key.Next:  // PageDown
+                if (listBox.Items.Count > 0 && e.OriginalSource is not ListBoxItem)
+                {
+                    listBox.Focus();
+
+                    if (listBox.ItemContainerGenerator.ContainerFromIndex(0) is ListBoxItem lbi)
+                        lbi.Focus();
+
+                    e.Handled = true;
+                }
+                break;
+        }
     }
 
     #endregion
@@ -362,8 +382,6 @@ public class AutoCompleteFolderTextBox : TextBox
         if (_historyListBox is not { } listBox)
             throw new NullReferenceException();
 
-        Debug.WriteLine("Expanded");
-
         var isShowHistroy = listBox.Items.Count <= 0 ? false : expander.IsExpanded;
         IsOpenHistoryPopup = isShowHistroy;
 
@@ -388,9 +406,32 @@ public class AutoCompleteFolderTextBox : TextBox
         NotifyTextProperty();
 
         IsOpenHistoryPopup = false;
-
         Keyboard.Focus(this);
+
         e.Handled = true;
+    }
+
+    private void HistoryParentTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (IsOpenCandidatePopup || IsOpenHistoryPopup)
+            return;
+
+        if (_historyListBox is not { } listBox)
+            throw new NullReferenceException();
+
+        switch (e.Key)
+        {
+            case Key.Up:
+            case Key.Down:
+            case Key.Prior: // PageUp
+            case Key.Next:  // PageDown
+                if (listBox.Items.Count > 0)
+                {
+                    IsOpenHistoryPopup = true;
+                    listBox.Focus();
+                }
+                break;
+        }
     }
 
     #endregion

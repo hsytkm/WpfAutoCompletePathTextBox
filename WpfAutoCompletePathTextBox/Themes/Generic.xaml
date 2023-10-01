@@ -44,7 +44,10 @@
                                     Text="{TemplateBinding Watermark}"
                                     Visibility="Collapsed" />
                                 <ScrollViewer x:Name="PART_ContentHost" Margin="0" />
-                                <Expander x:Name="PART_HistoryExpander" Grid.Column="1" />
+                                <Expander
+                                    x:Name="PART_HistoryExpander"
+                                    Grid.Column="1"
+                                    ToolTip="Show history" />
                             </Grid>
                             <Popup
                                 x:Name="PART_CandidatePopup"
@@ -55,7 +58,6 @@
                                 PopupAnimation="Slide"
                                 VerticalOffset="{Binding Path=Top, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}">
                                 <Border
-                                    x:Name="CandidateDropDownBorder"
                                     MinWidth="{Binding Path=ActualWidth, ElementName=rootGrid}"
                                     MaxHeight="200"
                                     Background="{x:Static SystemColors.WindowBrush}"
@@ -64,7 +66,7 @@
                                     <ListBox
                                         x:Name="PART_CandidateList"
                                         HorizontalContentAlignment="Stretch"
-                                        VerticalContentAlignment="Stretch"
+                                        VerticalContentAlignment="Center"
                                         BorderThickness="0"
                                         KeyboardNavigation.DirectionalNavigation="Cycle"
                                         SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
@@ -74,12 +76,11 @@
                                 x:Name="PART_HistoryPopup"
                                 AllowsTransparency="True"
                                 HorizontalOffset="{Binding Path=Left, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}"
-                                IsOpen="{Binding Path=IsOpenHistoryPopup, RelativeSource={RelativeSource Mode=TemplatedParent}, Mode=TwoWay}"
+                                IsOpen="False"
                                 Placement="Custom"
                                 PopupAnimation="Slide"
                                 VerticalOffset="{Binding Path=Top, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}">
                                 <Border
-                                    x:Name="HistoryDropDownBorder"
                                     MinWidth="{Binding Path=ActualWidth, ElementName=rootGrid}"
                                     MaxHeight="200"
                                     Background="{x:Static SystemColors.WindowBrush}"
@@ -88,7 +89,7 @@
                                     <ListBox
                                         x:Name="PART_HistoryList"
                                         HorizontalContentAlignment="Stretch"
-                                        VerticalContentAlignment="Stretch"
+                                        VerticalContentAlignment="Center"
                                         BorderThickness="0"
                                         KeyboardNavigation.DirectionalNavigation="Cycle"
                                         SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
