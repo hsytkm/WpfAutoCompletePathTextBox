@@ -28,19 +28,26 @@
                         BorderBrush="{Binding Path=BorderBrush, RelativeSource={RelativeSource Mode=TemplatedParent}, Mode=TwoWay}"
                         BorderThickness="{Binding Path=BorderThickness, RelativeSource={RelativeSource Mode=TemplatedParent}, Mode=TwoWay}"
                         CornerRadius="0">
-                        <Grid x:Name="root">
-                            <TextBlock
-                                x:Name="PART_Watermark"
-                                Margin="3,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center"
-                                Focusable="False"
-                                Foreground="{x:Static SystemColors.GrayTextBrush}"
-                                Text="{TemplateBinding Watermark}"
-                                Visibility="Collapsed" />
-                            <ScrollViewer x:Name="PART_ContentHost" Margin="0" />
+                        <Grid x:Name="rootGrid">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    x:Name="PART_Watermark"
+                                    Margin="3,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    Focusable="False"
+                                    Foreground="{x:Static SystemColors.GrayTextBrush}"
+                                    Text="{TemplateBinding Watermark}"
+                                    Visibility="Collapsed" />
+                                <ScrollViewer x:Name="PART_ContentHost" Margin="0" />
+                                <Expander x:Name="PART_HistoryExpander" Grid.Column="1" />
+                            </Grid>
                             <Popup
-                                x:Name="PART_Popup"
+                                x:Name="PART_CandidatePopup"
                                 AllowsTransparency="True"
                                 HorizontalOffset="{Binding Path=Left, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}"
                                 IsOpen="False"
@@ -48,14 +55,38 @@
                                 PopupAnimation="Slide"
                                 VerticalOffset="{Binding Path=Top, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}">
                                 <Border
-                                    x:Name="DropDownBorder"
-                                    MinWidth="{Binding Path=ActualWidth, ElementName=root}"
+                                    x:Name="CandidateDropDownBorder"
+                                    MinWidth="{Binding Path=ActualWidth, ElementName=rootGrid}"
                                     MaxHeight="200"
                                     Background="{x:Static SystemColors.WindowBrush}"
                                     BorderBrush="{x:Static SystemColors.WindowFrameBrush}"
                                     BorderThickness="1">
                                     <ListBox
-                                        x:Name="PART_ItemList"
+                                        x:Name="PART_CandidateList"
+                                        HorizontalContentAlignment="Stretch"
+                                        VerticalContentAlignment="Stretch"
+                                        BorderThickness="0"
+                                        KeyboardNavigation.DirectionalNavigation="Cycle"
+                                        SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                </Border>
+                            </Popup>
+                            <Popup
+                                x:Name="PART_HistoryPopup"
+                                AllowsTransparency="True"
+                                HorizontalOffset="{Binding Path=Left, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}"
+                                IsOpen="{Binding Path=IsOpenHistoryPopup, RelativeSource={RelativeSource Mode=TemplatedParent}, Mode=TwoWay}"
+                                Placement="Custom"
+                                PopupAnimation="Slide"
+                                VerticalOffset="{Binding Path=Top, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}">
+                                <Border
+                                    x:Name="HistoryDropDownBorder"
+                                    MinWidth="{Binding Path=ActualWidth, ElementName=rootGrid}"
+                                    MaxHeight="200"
+                                    Background="{x:Static SystemColors.WindowBrush}"
+                                    BorderBrush="{x:Static SystemColors.WindowFrameBrush}"
+                                    BorderThickness="1">
+                                    <ListBox
+                                        x:Name="PART_HistoryList"
                                         HorizontalContentAlignment="Stretch"
                                         VerticalContentAlignment="Stretch"
                                         BorderThickness="0"
@@ -100,7 +131,7 @@
                         <MultiTrigger>
                             <MultiTrigger.Conditions>
                                 <Condition Property="Validation.HasError" Value="True" />
-                                <Condition SourceName="PART_Popup" Property="IsOpen" Value="False" />
+                                <Condition SourceName="PART_CandidatePopup" Property="IsOpen" Value="False" />
                             </MultiTrigger.Conditions>
                             <!--<Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self}, Path=(Validation.Errors)[0].ErrorContent}" />-->
                             <!--<Setter TargetName="dockWarning" Property="Visibility" Value="Visible" />-->

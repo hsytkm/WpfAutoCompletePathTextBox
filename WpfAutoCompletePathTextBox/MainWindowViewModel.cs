@@ -4,7 +4,7 @@ namespace WpfAutoCompletePathTextBox;
 
 public sealed class MainWindowViewModel : MyBindableBase
 {
-    public ObservableCollection<string> PathHistory { get; } = new();
+    public ObservableCollection<string> PathHistories { get; } = new();
 
     public string DirectoryPathText
     {
@@ -13,7 +13,8 @@ public sealed class MainWindowViewModel : MyBindableBase
         {
             if (SetProperty(ref _directoryPathText, value))
             {
-                PathHistory.Add(value);
+                //Debug.WriteLine(@$"ViewModel:SetProperty->""{value}""");
+                PathHistories.Add(value);
             }
         }
     }

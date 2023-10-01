@@ -55,6 +55,6 @@
             FontSize="14"
             Text="{Binding DirectoryPathText, Mode=OneWay, StringFormat='Entered Path : {0}'}" />
 
-        <ListBox ItemsSource="{Binding PathHistory, Mode=OneWay}" />
+        <ListBox ItemsSource="{Binding PathHistories, Mode=OneWay}" />
     </DockPanel>
 </Window>

@@ -14,7 +14,7 @@ public sealed class DirectoryExistsRule : ValidationRule
         {
             if (value is string path)
             {
-                message = Directory.Exists(path) ? null : "Directory not found.";
+                message = IsValidPath(path) ? null : "Directory not found.";
             }
             else
             {
@@ -29,4 +29,6 @@ public sealed class DirectoryExistsRule : ValidationRule
         bool isValid = message is null;
         return new(isValid, message);
     }
+
+    public static bool IsValidPath(string path) => Directory.Exists(path);
 }
