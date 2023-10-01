@@ -15,16 +15,27 @@
     </Window.DataContext>
 
     <DockPanel Margin="10">
-        <Grid DockPanel.Dock="Top">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+        <TextBlock
+            DockPanel.Dock="Top"
+            FontSize="14"
+            Text="Enter Path :" />
 
-            <TextBlock Grid.Row="0" Text="Enter Path :" />
+        <Grid Margin="0,10" DockPanel.Dock="Top">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <CheckBox
+                Margin="5"
+                VerticalAlignment="Center"
+                IsChecked="{Binding IsEnableText, Mode=TwoWay}" />
 
             <!--  フォルダの存在有無をチェックしてUIにErrorを表示します  -->
-            <local:PopupFolderTextBox Grid.Row="1" Margin="0,10">
+            <local:AutoCompleteFolderTextBox
+                Grid.Column="1"
+                IsEnabled="{Binding IsEnableText, Mode=OneWay}"
+                Watermark="Watermark text">
                 <TextBox.Text>
                     <Binding
                         Mode="TwoWay"
@@ -35,7 +46,7 @@
                         </Binding.ValidationRules>
                     </Binding>
                 </TextBox.Text>
-            </local:PopupFolderTextBox>
+            </local:AutoCompleteFolderTextBox>
         </Grid>
 
         <TextBlock

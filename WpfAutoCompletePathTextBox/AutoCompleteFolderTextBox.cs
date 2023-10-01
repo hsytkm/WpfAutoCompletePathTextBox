@@ -6,7 +6,7 @@ using System.Windows.Controls.Primitives;
 
 namespace WpfAutoCompletePathTextBox;
 
-public partial class PopupFolderTextBox : TextBox
+public class AutoCompleteFolderTextBox : TextBox
 {
     private Popup? _popup;
     private ListBox? _itemListBox;
@@ -15,9 +15,18 @@ public partial class PopupFolderTextBox : TextBox
     private bool _templateLoaded;
     private string? _lastFolderPath;
 
-    public PopupFolderTextBox()
+    public static readonly DependencyProperty WatermarkProperty =
+        DependencyProperty.Register(nameof(Watermark), typeof(string), typeof(AutoCompleteFolderTextBox), new PropertyMetadata(""));
+
+    public string? Watermark
     {
-        InitializeComponent();
+        get => (string?)GetValue(WatermarkProperty);
+        set => SetValue(WatermarkProperty, value);
+    }
+
+    static AutoCompleteFolderTextBox()
+    {
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(AutoCompleteFolderTextBox), new FrameworkPropertyMetadata(typeof(AutoCompleteFolderTextBox)));
     }
 
     public override void OnApplyTemplate()
@@ -37,6 +46,7 @@ public partial class PopupFolderTextBox : TextBox
         itemList.KeyDown += ItemList_KeyDown;
         popup.CustomPopupPlacementCallback += Popup_Repositioning;
 
+        // PopupはWindowのフォーカス状態と連動させます（Popup表示だけが残る対応）
         if (GetParentWindow(this) is { } parentWindow)
         {
             bool prevIsOpen = false;
@@ -80,11 +90,9 @@ public partial class PopupFolderTextBox : TextBox
                 case Key.Prior:
                 case Key.Next:
                     itemListBox.Focus();
-                    itemListBox.SelectedIndex = 0;
 
-                    var selectedIndex = itemListBox.SelectedIndex;
-                    var lbi = itemListBox.ItemContainerGenerator.ContainerFromIndex(selectedIndex) as ListBoxItem;
-                    lbi?.Focus();
+                    if (itemListBox.ItemContainerGenerator.ContainerFromIndex(0) is ListBoxItem lbi)
+                        lbi.Focus();
 
                     e.Handled = true;
                     break;
@@ -94,38 +102,39 @@ public partial class PopupFolderTextBox : TextBox
 
     private void ItemList_KeyDown(object sender, KeyEventArgs e)
     {
-        if (_popup is not { } popup)
-            throw new NullReferenceException();
-
         if (e.OriginalSource is not ListBoxItem tbi)
             return;
+
+        if (_popup is not { } popup)
+            throw new NullReferenceException();
 
         string? text = e.Key switch
         {
             Key.Enter => tbi.Content as string,
-            Key.Escape => _lastFolderPath is null ? null : _lastFolderPath.TrimEnd('\\') + '\\',
+            Key.Oem5 => tbi.Content is string ? (tbi.Content as string) + '\\' : null,      // BackslashKey
+            Key.Escape => _lastFolderPath is not null ? _lastFolderPath.TrimEnd('\\') + '\\' : null,
             _ => null
         };
 
         if (text is null)
-        {
-            e.Handled = false;
             return;
-        }
 
         // 以下だとポップアップのEnterキー選択でPathを確定しません
         //if (e.Key is Key.Enter)
         //    UpdateSource();
 
-        Text = text;
-        Select(Text.Length, 0);  // Select last char
+        SetTextAndMoveLastChar(this, text);
 
         // 以下だとポップアップのEnterキー選択でPathを確定します
         if (e.Key is Key.Enter)
             UpdateSource();
 
         Keyboard.Focus(this);
-        popup.IsOpen = false;
+
+        // 基本的には 選択が完了しているのでPopupをクローズしますが、
+        // Backslashキー かつ 子ディレクトリが存在する場合は継続したPath選択のためクローズしません。
+        popup.IsOpen = e.Key is Key.Oem5 && new DirectoryInfo(Text).EnumerateDirectories().Any();
+
         e.Handled = true;
     }
 
@@ -137,6 +146,10 @@ public partial class PopupFolderTextBox : TextBox
         if (e.Key is Key.Enter)
         {
             popup.IsOpen = false;
+
+            var current = Text;
+            var newText = IsDriveLetterOnly(current) ? current : current.TrimEnd('\\');
+            SetTextAndMoveLastChar(this, newText);
             UpdateSource();
         }
     }
@@ -148,14 +161,14 @@ public partial class PopupFolderTextBox : TextBox
 
     private void ItemList_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (_popup is not { } popup)
-            throw new NullReferenceException();
-
         if (e.LeftButton is not MouseButtonState.Pressed)
             return;
 
         if (e.OriginalSource is not TextBlock tb)
             return;
+
+        if (_popup is not { } popup)
+            throw new NullReferenceException();
 
         Text = tb.Text;
         UpdateSource();
@@ -199,7 +212,7 @@ public partial class PopupFolderTextBox : TextBox
                 var dirName = Path.GetDirectoryName(path);
                 if (dirName is null)
                 {
-                    if (path.Length == 3 && path[^2..] == ":\\")
+                    if (IsDriveLetterOnly(path))
                         dirName = path;
                 }
 
@@ -216,4 +229,12 @@ public partial class PopupFolderTextBox : TextBox
             return Enumerable.Empty<string>();
         }
     }
+
+    private static void SetTextAndMoveLastChar(TextBox textBlock, string text)
+    {
+        textBlock.Text = text;
+        textBlock.Select(text.Length, 0);   // Select last char
+    }
+
+    private static bool IsDriveLetterOnly(string path) => path.Length == 3 && path[^2..] == ":\\";
 }

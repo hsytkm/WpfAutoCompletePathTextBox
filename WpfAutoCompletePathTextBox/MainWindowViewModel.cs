@@ -18,4 +18,12 @@ public sealed class MainWindowViewModel : MyBindableBase
         }
     }
     private string _directoryPathText = "";
+
+    public bool IsEnableText
+    {
+        get => _isEnableText;
+        set => SetProperty(ref _isEnableText, value);
+    }
+    private bool _isEnableText = true;
+    
 }
