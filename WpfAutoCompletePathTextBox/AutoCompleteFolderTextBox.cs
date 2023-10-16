@@ -122,6 +122,8 @@ public class AutoCompleteFolderTextBox : TextBox
             listBox.KeyDown += CandidateListBox_KeyDown;
             listBox.PreviewMouseDown += ListBox_PreviewMouseDown;
             popup.CustomPopupPlacementCallback += Popup_Repositioning;
+            parentWindow.KeyDown += (_, e) => { if (e.Key is Key.Escape) IsOpenCandidatePopup = false; };
+            parentWindow.MouseDown += (_, _) => IsOpenCandidatePopup = false;
 
             // PopupはWindowのフォーカス状態と連動させます（Popup表示だけが残る対応）
             bool prevIsOpen = false;
@@ -142,6 +144,8 @@ public class AutoCompleteFolderTextBox : TextBox
             listBox.KeyDown += HistoryListBox_KeyDown;
             listBox.PreviewMouseDown += ListBox_PreviewMouseDown;
             popup.CustomPopupPlacementCallback += Popup_Repositioning;
+            parentWindow.KeyDown += (_, e) => { if (e.Key is Key.Escape) IsOpenHistoryPopup = false; };
+            parentWindow.MouseDown += (_, _) => IsOpenHistoryPopup = false;
 
             expander.IsEnabled = false;
             expander.Expanded += HistoryExpander_Expanded;      // Open

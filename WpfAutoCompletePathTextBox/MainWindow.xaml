@@ -35,7 +35,7 @@
             <local:AutoCompleteFolderTextBox
                 Grid.Column="1"
                 IsEnabled="{Binding IsEnableText, Mode=OneWay}"
-                Watermark="Watermark text">
+                Watermark="e.g. C:\Windows">
                 <TextBox.Text>
                     <Binding
                         Mode="TwoWay"
